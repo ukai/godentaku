@@ -1,11 +1,6 @@
 package godentaku
 
-import (
-	"bufio"
-	"fmt"
-	"os"
-	"strconv"
-)
+import "fmt"
 
 type Ast interface {
 	String() string
@@ -26,7 +21,7 @@ func NewEnv() *Env {
 }
 
 func Set(env *Env, key string, n int) {
-	env.Var[key] = Num{Val:n}
+     	env.Var[key] = Num(n)
 }
 
 func SetExpr(env *Env, key string, expr Ast) {
@@ -40,7 +35,7 @@ func SetFunc(env *Env, funcname string, funcCode func(Ast, *Env) Ast) {
 func envValue(env *Env, key string) (n int, ok bool) {
 	if v, found := env.Var[key]; found {
 		if n, ok := v.(Num); ok {
-			return n.Val, true
+			return int(n), true
 		}
 	}
 	return 0, false
@@ -53,27 +48,24 @@ func Defined(env *Env, key string) bool {
 	return false
 }
 
-type Num struct {
-	Val int
-}
+type Num int  // type Num struct { Val int } 
 func (n Num) String() string {
-	return strconv.Itoa(n.Val)
+	return fmt.Sprintf("%d", int(n))  // strconv.Itoa(int(n))
 }
 func (n Num) Eval(_ *Env) Ast {
 	return n
 }
 
-type Symbol struct {
-	Name string
-}
+type Symbol string
 func (s Symbol) String() string {
-	return s.Name
+	return string(s)
 }
 func (s Symbol) Eval(env *Env) Ast {
-	if v, found := env.Var[s.Name]; found {
-		env.Var[s.Name] = Num{Val:0}  // prevent recursive eval
+	name := string(s)
+	if v, found := env.Var[name]; found {
+		env.Var[name] = Num(0)  // prevent recursive eval
 		r := v.Eval(env)
-		env.Var[s.Name] = v
+		env.Var[name] = v
 		return r
 	}
 	return s
@@ -92,7 +84,7 @@ func (e UnaryOp) Eval(env *Env) Ast {
 	}
 	v := e.Expr.Eval(env)
 	if n, ok := v.(Num); ok && e.Op == '-' {
-		return Num{Val: -n.Val}
+		return Num(-int(n))
 	}
 	return v
 }
@@ -113,10 +105,10 @@ func (e BinOp) Eval(env *Env) Ast {
 	rnum, rok := r.(Num)
 	if lok && rok {
 		switch e.Op {
-		case '+': return Num{Val:lnum.Val + rnum.Val}
-		case '-': return Num{Val:lnum.Val - rnum.Val}
-		case '*': return Num{Val:lnum.Val * rnum.Val}
-		case '/': return Num{Val:lnum.Val / rnum.Val}
+		case '+': return Num(int(lnum) + int(rnum))
+		case '-': return Num(int(lnum) - int(rnum))
+		case '*': return Num(int(lnum) * int(rnum))
+		case '/': return Num(int(lnum) / int(rnum))
 		}
 		panic(fmt.Sprintf("unsupported binOp:%c", e.Op))
 	}
@@ -132,10 +124,10 @@ func (a AssignOp) String() string {
 }
 func (a AssignOp) Eval(env *Env) Ast {
 	v := a.Expr.Eval(env)
-	if s, ok := a.Expr.(Symbol); ok && s.Name == "undef" {
-		env.Var[a.Var.Name] = a.Expr, false
+	if s, ok := a.Expr.(Symbol); ok && string(s) == "undef" {
+		env.Var[string(a.Var)] = a.Expr, false
 	} else {
-		env.Var[a.Var.Name] = a.Expr
+		env.Var[string(a.Var)] = a.Expr
 	}
 	return v
 }
@@ -148,16 +140,15 @@ func (f FunCall) String() string {
 	return fmt.Sprintf("%s(%s)", f.Func, f.Expr)
 }
 func (f FunCall) Eval(env *Env) Ast {
-	if fun, ok := env.Func[f.Func.Name]; ok {
+	if fun, ok := env.Func[string(f.Func)]; ok {
 		return fun(f.Expr, env)
 	}
-	panic(fmt.Sprintf("no such function: %s", f.Func.Name))
+	panic(fmt.Sprintf("no such function: %s", f.Func))
 }
 
 func isDigit(b byte) bool {
 	return b >= '0' && b <= '9'
 }
-
 func digitVal(b byte) int {
 	switch {
 	case isDigit(b):
@@ -169,7 +160,6 @@ func digitVal(b byte) int {
 	}
 	return -1
 }
-
 func isAlpha(b byte) bool {
 	return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || b == '_'
 }
@@ -182,7 +172,7 @@ func skipSpace(buf []byte) []byte {
 			return buf[i:]
 		}
 	}
-	return buf[len(buf):]
+	return []byte{}
 }
 
 func getNum(buf []byte) (num Num, nbuf []byte) {
@@ -210,7 +200,7 @@ func getNum(buf []byte) (num Num, nbuf []byte) {
 		}
 		nbuf = nbuf[1:]
 	}
-	return Num{Val: n}, nbuf
+	return Num(n), nbuf
 }
 
 func getSymbol(buf []byte) (sym Symbol, nbuf []byte) {
@@ -223,15 +213,16 @@ func getSymbol(buf []byte) (sym Symbol, nbuf []byte) {
 			break
 		}
 	}
-	return Symbol{Name: string(buf[0:i])}, buf[i:]
+	return Symbol(string(buf[0:i])), buf[i:]
 }
 
-// stmt := expr | symbol '=' expr
+// stmt := expr '\n' | symbol '=' expr '\n'
 // expr := [+|-] term ([+|-] term)
 // term := factor ([*|/] factor)
 // factor := num | symbol | '(' expr ')' | symbol'(' expr ')'
 
 func parseStatement(buf []byte) (stmt Ast, nbuf []byte) {
+	buf = skipSpace(buf)
 	stmt, nbuf = parseExpression(buf)
 	nbuf = skipSpace(nbuf)
 	if nbuf[0] == '=' {
@@ -268,6 +259,7 @@ func parseExpression(buf []byte) (expr Ast, nbuf []byte) {
 	return expr, nbuf
 }
 func parseTerm(buf []byte) (term Ast, nbuf []byte) {
+	buf = skipSpace(buf)
 	term, nbuf = parseFactor(buf)
 	nbuf = skipSpace(nbuf)
 	for nbuf[0] == '*' || nbuf[0] == '/' {
@@ -279,7 +271,6 @@ func parseTerm(buf []byte) (term Ast, nbuf []byte) {
 	}
 	return term, nbuf
 }
-
 func parseFactor(buf []byte) (factor Ast, nbuf []byte) {
 	buf = skipSpace(buf)
 	switch ch := buf[0]; {
@@ -301,7 +292,7 @@ func parseFactor(buf []byte) (factor Ast, nbuf []byte) {
 			expr, nbuf = parseExpression(nbuf[1:])
 			nbuf = skipSpace(nbuf)
 			if nbuf[0] != ')' {
-				panic("unbalanced paren for func:" + sym.Name)
+				panic("unbalanced paren for func:" + string(sym))
 			}
 			return FunCall{Func:sym, Expr:expr}, nbuf[1:]
 		}
@@ -310,20 +301,15 @@ func parseFactor(buf []byte) (factor Ast, nbuf []byte) {
 	panic("unepxected token:" + string(buf))
 }
 
-func Read(in *bufio.Reader) (ast Ast, err os.Error) {
-	line, err := in.ReadBytes('\n')
-	if err != nil {
-		return nil, err
-	}
-	ast, _ = parseStatement(line)
-	return ast, nil
+func Read(b []byte) (ast Ast, nbuf []byte) {
+	return parseStatement(b)
 }
 
 func Eval(ast Ast, env *Env) (v Ast) {
 	v = ast.Eval(env)
-	if s, ok := ast.(Symbol); ok && s.Name == "_" {
+	if s, ok := ast.(Symbol); ok && string(s) == "_" {
 	} else {
-		SetExpr(env, "_", ast)
+		SetExpr(env, "_", v)
 	}
 	return v
 }
@@ -341,25 +327,25 @@ func Print(v Ast, env *Env) string {
 			panic(fmt.Sprintf("bad .printBase: %d",
 				env.Var[".printBase"]))
 		}
-		return fmt.Sprintf(format, n.Val)
+		return fmt.Sprintf(format, int(n))
 	}
 	return v.String()
 }
 
 func DumpAst(v Ast, env *Env) Ast {
 	if s, ok := v.(Symbol); ok {
-		if e, found := env.Var[s.Name]; found {
-			return Symbol{Name: fmt.Sprintf("%#v", e)}
+		if e, found := env.Var[string(s)]; found {
+			return Symbol(fmt.Sprintf("%#v", e))
 		}
 	}
-	return Symbol{Name: fmt.Sprintf("%#v", v)}
+	return Symbol(fmt.Sprintf("%#v", v))
 }
 
 func PrintAst(v Ast, env *Env) Ast {
 	if s, ok := v.(Symbol); ok {
-		if e, found := env.Var[s.Name]; found {
-			return Symbol{Name: e.String()}
+		if e, found := env.Var[string(s)]; found {
+			return Symbol(e.String())
 		}
 	}
-	return Symbol{Name: v.String()}
+	return Symbol(v.String())
 }

@@ -13,12 +13,16 @@ func readEvalPrint(in *bufio.Reader, env *godentaku.Env) (err os.Error) {
 			fmt.Println("panic:", x)
 		}
 	}()
-	ast, err := godentaku.Read(in)
+	line, err := in.ReadBytes('\n')
 	if err != nil {
 		return err
 	}
+	ast, nbuf := godentaku.Read(line)
 	v := godentaku.Eval(ast, env)
 	fmt.Println(godentaku.Print(v, env))
+	if len(nbuf) > 0 && nbuf[0] != '\n' {
+		fmt.Println("warning: unparsed:", string(nbuf))
+	}
 	return nil
 }
 
