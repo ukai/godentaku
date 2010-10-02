@@ -1,11 +1,17 @@
-# Copyright 2009 The Go Authors. All rights reserved.
+# Copyright 2010 Fumitoshi Ukai
 # Use of this source code is governed by a BSD-style
-# license that can be found in the LICENSE file.
+
+# goinstall godentaku.googlecode.com/hg/godentaku でパッケージのインストール
+# gomake でビルド
+# ./godentaku で実行
 
 include $(GOROOT)/src/Make.inc
 
+# TARGに実行ファイル名を設定します。
 TARG=godentaku
+# GOFILESにソースファイル一式を設定します。
 GOFILES=\
 	main.go
 
+# コマンドの場合 Make.cmdをincludeします。
 include $(GOROOT)/src/Make.cmd

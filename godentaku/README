@@ -1,1 +1,9 @@
 Simple calculator
+これは Google Developer Day 2010 の「プログラミング言語Go」セッションの
+説明用に書いたプログラムです。
+
+goinstall godentaku.googlecode.com/hg/godentaku でインストールできます。
+
+使いかたの例は
+ http://code.google.com/p/godentaku/source/browse/#hg/cmd
+にあります。
