@@ -49,7 +49,7 @@ type Ast interface {
 // 大文字ではじまっているので、この型およびこの型の中のフィールドは
 // パッケージの外で利用できます。
 type Env struct {
-	Var map[string]Ast
+	Var  map[string]Ast
 	Func map[string]func(Ast, *Env) Ast
 }
 
@@ -82,7 +82,7 @@ func NewEnv() *Env {
 // 返り値はありません。
 func Set(env *Env, key string, n int) {
 	// mapにキーに対する要素の設定は次のように書けます。
-     	env.Var[key] = Num(n)
+	env.Var[key] = Num(n)
 	// ちなみに要素を消すときは次のように書きます。
 	// env.Var[key] = Num(0), false
 }
@@ -167,6 +167,7 @@ func (n Num) Eval(_ *Env) Ast {
 
 // string型をAstインターフェイスをみたすSymbol型として定義します。
 type Symbol string
+
 func (s Symbol) String() string {
 	// Symbol型のsをstring型にするにはstring(s)とします。
 	return string(s)
@@ -192,15 +193,16 @@ func (s Symbol) Eval(env *Env) Ast {
 
 // 単項式をAstインターフェイスをみたすUnaryOp型として定義します。
 type UnaryOp struct {
-	Op byte
+	Op   byte
 	Expr Ast
 }
+
 func (e UnaryOp) String() string {
 	return fmt.Sprintf("%c%s", e.Op, e.Expr)
 }
 func (e UnaryOp) Eval(env *Env) Ast {
 	if e.Op != '-' {
-	   	// もし単項演算子が '-' じゃなかったpanicします。
+		// もし単項演算子が '-' じゃなかったpanicします。
 		// 処理をうちきって呼出元にもどっていきます。
 		// 途中 recoverされれば、ここで渡した値がとりだせます。
 		// recoverされなければ、プログラムは異常終了します。
@@ -217,10 +219,11 @@ func (e UnaryOp) Eval(env *Env) Ast {
 
 // 二項式をAstインターフェイスをみたすBinOp型として定義します。
 type BinOp struct {
-	Op byte
-	Left Ast
+	Op    byte
+	Left  Ast
 	Right Ast
 }
+
 func (e BinOp) String() string {
 	return fmt.Sprintf("(%s %c %s)", e.Left, e.Op, e.Right)
 }
@@ -234,22 +237,27 @@ func (e BinOp) Eval(env *Env) Ast {
 	// かえします。
 	if lok && rok {
 		switch e.Op {
-		case '+': return Num(int(lnum) + int(rnum))
-		case '-': return Num(int(lnum) - int(rnum))
-		case '*': return Num(int(lnum) * int(rnum))
-		case '/': return Num(int(lnum) / int(rnum))
+		case '+':
+			return Num(int(lnum) + int(rnum))
+		case '-':
+			return Num(int(lnum) - int(rnum))
+		case '*':
+			return Num(int(lnum) * int(rnum))
+		case '/':
+			return Num(int(lnum) / int(rnum))
 		}
 		panic(fmt.Sprintf("unsupported binOp:%c", e.Op))
 	}
 	// 左辺値、右辺値を評価した結果にしたBinOpをつくってかえします。
-	return BinOp{Op:e.Op, Left:l, Right:r}
+	return BinOp{Op: e.Op, Left: l, Right: r}
 }
 
 // 代入式をAstインターフェイスをみたすBinOp型として定義します。
 type AssignOp struct {
-	Var Symbol
+	Var  Symbol
 	Expr Ast
 }
+
 func (a AssignOp) String() string {
 	return fmt.Sprintf("%s = %s", a.Var, a.Expr)
 }
@@ -270,6 +278,7 @@ type FunCall struct {
 	Func Symbol
 	Expr Ast
 }
+
 func (f FunCall) String() string {
 	return fmt.Sprintf("%s(%s)", f.Func, f.Expr)
 }
@@ -297,9 +306,9 @@ func digitVal(b byte) int {
 	switch {
 	case isDigit(b):
 		return int(b - '0')
-	case 'a' <= b && b <= 'f':  // 16進用
+	case 'a' <= b && b <= 'f': // 16進用
 		return int(b - 'a' + 10)
-	case 'A' <= b && b <= 'F':  // 16進用
+	case 'A' <= b && b <= 'F': // 16進用
 		return int(b - 'A' + 10)
 	}
 	return -1
@@ -343,20 +352,24 @@ func getNum(buf []byte) (num Num, nbuf []byte) {
 		panic("not number:" + string(buf))
 	}
 	n := int(buf[0] - '0')
-	nbuf = buf[1:]  // 1バイトすすめます。
+	nbuf = buf[1:] // 1バイトすすめます。
 	base := 10
 	if n == 0 {
 		// switchはこのように書くこともできます。
 		switch nbuf[0] {
 		// 0b.., 0B... の場合
-		case 'b', 'B':base = 2; nbuf = nbuf[1:]
+		case 'b', 'B':
+			base = 2
+			nbuf = nbuf[1:]
 		// baseを2にしてnbufを1バイトすすめます。
 		// Cなどとちがってcaseは次のcaseとはつながっていません。
 		// (わざわざbreakをかかない)
 		// どうしてもつなげたい場合は fallthrough とかきます。
 
 		// 0x.., 0X... の場合
-		case 'x', 'X': base = 16; nbuf = nbuf[1:]
+		case 'x', 'X':
+			base = 16
+			nbuf = nbuf[1:]
 		default:
 			if isDigit(nbuf[0]) {
 				base = 8
@@ -366,7 +379,7 @@ func getNum(buf []byte) (num Num, nbuf []byte) {
 	// for文はwhileのような書きかたもできます。(whileはありません)
 	for len(nbuf) > 0 {
 		if d := digitVal(nbuf[0]); d >= 0 && d < base {
-			n = n * base + d
+			n = n*base + d
 		} else {
 			break
 		}
@@ -413,7 +426,7 @@ func parseStatement(buf []byte) (stmt Ast, nbuf []byte) {
 			var expr Ast
 			expr, nbuf = parseExpression(nbuf[1:])
 			// 代入式としてあつかいます。
-			stmt = AssignOp{Var:sym, Expr:expr}
+			stmt = AssignOp{Var: sym, Expr: expr}
 		} else {
 			// '=' の左はSymbol以外だと例外処理にします。
 			panic(fmt.Sprintf("lvalue is not symbol:%s", stmt))
@@ -428,14 +441,14 @@ func parseExpression(buf []byte) (expr Ast, nbuf []byte) {
 	buf = skipSpace(buf)
 	var uniop byte
 	if buf[0] == '+' || buf[0] == '-' {
-		uniop = buf[0]  // '+' か '-'
+		uniop = buf[0] // '+' か '-'
 		buf = buf[1:]  // 1バイトすすめる
 	}
 	expr, nbuf = parseTerm(buf)
 	if uniop == '-' {
-	   	// '-' term だったら UnaryOpをつくる
+		// '-' term だったら UnaryOpをつくる
 		// '+' term は termとおなじなのでなにもしません。
-		expr = UnaryOp{Op:'-', Expr:expr}
+		expr = UnaryOp{Op: '-', Expr: expr}
 	}
 	nbuf = skipSpace(nbuf)
 	for nbuf[0] == '+' || nbuf[0] == '-' {
@@ -470,20 +483,20 @@ func parseFactor(buf []byte) (factor Ast, nbuf []byte) {
 	buf = skipSpace(buf)
 	// switch は次のように書くこともできます。
 	switch ch := buf[0]; {
-	case ch == '(':  // '(' expr ')' の場合
+	case ch == '(': // '(' expr ')' の場合
 		factor, nbuf = parseExpression(buf[1:])
 		nbuf = skipSpace(nbuf)
 		if nbuf[0] != ')' {
 			panic("unbalanced paren: " + string(buf))
 		}
 		return factor, nbuf[1:]
-	case isDigit(ch):  // 数字の場合
+	case isDigit(ch): // 数字の場合
 		return getNum(buf)
-	case isAlpha(ch) || ch == '.':  // symbolの場合
+	case isAlpha(ch) || ch == '.': // symbolの場合
 		var sym Symbol
 		sym, nbuf = getSymbol(buf)
 		nbuf = skipSpace(nbuf)
-		if nbuf[0] == '(' {  // symbol '(' expr ')' の場合
+		if nbuf[0] == '(' { // symbol '(' expr ')' の場合
 			var expr Ast
 			expr, nbuf = parseExpression(nbuf[1:])
 			nbuf = skipSpace(nbuf)
@@ -491,7 +504,7 @@ func parseFactor(buf []byte) (factor Ast, nbuf []byte) {
 				panic("unbalanced paren for func:" + string(sym))
 			}
 			// FunCallを作ります。
-			return FunCall{Func:sym, Expr:expr}, nbuf[1:]
+			return FunCall{Func: sym, Expr: expr}, nbuf[1:]
 		}
 		return sym, nbuf
 	}
@@ -526,10 +539,14 @@ func Print(v Ast, env *Env) string {
 		// _ でうけとります。
 		base, _ := envValue(env, ".printBase")
 		switch base {
-		case 2: format = "0b%b"
-		case 8: format = "0%o"
-		case 10: format = "%d"
-		case 16: format = "0x%x"
+		case 2:
+			format = "0b%b"
+		case 8:
+			format = "0%o"
+		case 10:
+			format = "%d"
+		case 16:
+			format = "0x%x"
 		default:
 			panic(fmt.Sprintf("bad .printBase: %d",
 				env.Var[".printBase"]))
